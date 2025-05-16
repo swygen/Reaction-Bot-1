@@ -6,7 +6,7 @@ from keep_alive import keep_alive
 import asyncio
 
 # Config
-BOT_TOKEN = "8155786084:AAFSgqmR8Gxsz4XHliErBhmIpYw_bDdcjA0"
+BOT_TOKEN = "7776509144:AAGhnxJK95qCTT7FMyJpO9r1Qj-rcgFVhAQ"
 REQUIRED_CHANNEL = "@swegenbd"
 DEVELOPER_USERNAME = "@Swygen_bd"
 ACCESS_PASSWORD = "SR2580BD"
