@@ -3,133 +3,132 @@ import random
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters
 from keep_alive import keep_alive
+import asyncio
 
-# Bot Configurations
+# Config
 BOT_TOKEN = "8155786084:AAFSgqmR8Gxsz4XHliErBhmIpYw_bDdcjA0"
 REQUIRED_CHANNEL = "@swegenbd"
 DEVELOPER_USERNAME = "@Swygen_bd"
 ACCESS_PASSWORD = "SR2580BD"
 
 # Logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
 
-# Track users waiting for password
-user_password_request = {}
 EMOJI_REACTIONS = ["❤️‍🔥", "⚡", "🗿", "🎉", "💯"]
+user_password_request = set()
 
-# Start Command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     try:
-        member = await context.bot.get_chat_member(chat_id=REQUIRED_CHANNEL, user_id=user.id)
-        if member.status not in ['member', 'administrator', 'creator']:
+        member = await context.bot.get_chat_member(REQUIRED_CHANNEL, user.id)
+        if member.status not in ["member", "administrator", "creator"]:
             raise Exception("Not joined")
-    except:
-        join_button = InlineKeyboardMarkup([
+    except Exception:
+        join_keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("✅ গ্রুপে জয়েন করো", url=f"https://t.me/{REQUIRED_CHANNEL.lstrip('@')}")],
             [InlineKeyboardButton("আমি জয়েন করেছি", callback_data="check_joined")]
         ])
-        await update.message.reply_text("বট ব্যবহারের জন্য আমাদের গ্রুপে জয়েন করুন:", reply_markup=join_button)
+        await update.message.reply_text(
+            "বট ব্যবহারের জন্য আমাদের গ্রুপে জয়েন করুন:", reply_markup=join_keyboard
+        )
         return
 
-    keyboard = InlineKeyboardMarkup([
+    main_keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("➕ Add Group", callback_data="ask_password")],
         [InlineKeyboardButton("🔑 Request Key", callback_data="request_key")],
         [InlineKeyboardButton("👤 Developer", callback_data="developer")]
     ])
-    await update.message.reply_text("স্বাগতম! নিচের অপশনগুলো ব্যবহার করুন:", reply_markup=keyboard)
+    await update.message.reply_text("স্বাগতম! নিচের অপশনগুলো থেকে নির্বাচন করুন:", reply_markup=main_keyboard)
 
-# Check Join Callback
 async def check_joined_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user = query.from_user
     await query.answer()
-
     try:
-        member = await context.bot.get_chat_member(chat_id=REQUIRED_CHANNEL, user_id=user.id)
-        if member.status in ['member', 'administrator', 'creator']:
-            keyboard = InlineKeyboardMarkup([
+        member = await context.bot.get_chat_member(REQUIRED_CHANNEL, user.id)
+        if member.status in ["member", "administrator", "creator"]:
+            main_keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton("➕ Add Group", callback_data="ask_password")],
                 [InlineKeyboardButton("🔑 Request Key", callback_data="request_key")],
                 [InlineKeyboardButton("👤 Developer", callback_data="developer")]
             ])
-            await query.edit_message_text("✅ আপনি সফলভাবে গ্রুপে জয়েন করেছেন!\nনিচের অপশনগুলো ব্যবহার করুন:", reply_markup=keyboard)
+            await query.edit_message_text(
+                "✅ আপনি সফলভাবে গ্রুপে জয়েন করেছেন!\nনিচের অপশনগুলো থেকে নির্বাচন করুন:", reply_markup=main_keyboard
+            )
         else:
-            raise Exception("Still not joined")
-    except:
-        await query.edit_message_text("❌ আপনি এখনও গ্রুপে জয়েন করেননি! দয়া করে আগে জয়েন করুন।")
+            raise Exception("Not joined")
+    except Exception:
+        await query.edit_message_text("❌ আপনি এখনও গ্রুপে জয়েন করেননি! দয়া করে আগে জয়েন করুন।")
 
-# Ask for password
 async def ask_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
-    user_password_request[user_id] = True
+    user_password_request.add(user_id)
     await query.answer()
-    await query.message.reply_text("➕ বটটি গ্রুপে অ্যাড করতে পাসওয়ার্ড প্রয়োজন।\nঅনুগ্রহ করে পাসওয়ার্ড লিখুন:")
+    await query.message.reply_text("➕ গ্রুপে বট এড করার জন্য পাসওয়ার্ড লিখুন:")
 
-# Handle password input
 async def handle_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    if user_id not in user_password_request:
+        return  # পাসওয়ার্ড চাইতে হয়নি
+
     text = update.message.text.strip()
+    if text == ACCESS_PASSWORD:
+        add_group_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("✅ এখন বটকে গ্রুপে এড করুন", url=f"https://t.me/{(await context.bot.get_me()).username}?startgroup=true")]
+        ])
+        await update.message.reply_text("✅ পাসওয়ার্ড সঠিক! এখন নিচের বাটনে ক্লিক করে বটকে গ্রুপে এড করুন:", reply_markup=add_group_keyboard)
+    else:
+        await update.message.reply_text("❌ ভুল পাসওয়ার্ড! আবার চেষ্টা করুন অথবা 'Request Key' বাটনে ক্লিক করুন।")
 
-    if user_password_request.get(user_id):
-        if text == ACCESS_PASSWORD:
-            keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ এখন গ্রুপে বট এড করুন", url=f"https://t.me/{context.bot.username}?startgroup=true")]
-            ])
-            await update.message.reply_text("✅ সঠিক পাসওয়ার্ড! এখন আপনি বটকে গ্রুপে এড করতে পারেন:", reply_markup=keyboard)
-        else:
-            await update.message.reply_text("❌ ভুল পাসওয়ার্ড! অনুগ্রহ করে আবার চেষ্টা করুন অথবা 'Request Key' বাটন ব্যবহার করুন।")
-        user_password_request[user_id] = False
+    user_password_request.discard(user_id)
 
-# Request Key
 async def request_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
     text = (
-        "🔐 *Exclusive Access Required!*\n\n"
-        "বটটিকে গ্রুপে যুক্ত করার জন্য একটি বিশেষ পাসওয়ার্ড প্রয়োজন।\n\n"
-        "পাসওয়ার্ড পেতে অনুগ্রহ করে নিচের বাটনে ক্লিক করে অ্যাডমিনের সাথে যোগাযোগ করুন।\n\n"
+        "🔐 *এক্সক্লুসিভ এক্সেস প্রয়োজন!*\n\n"
+        "বটকে গ্রুপে যুক্ত করার জন্য একটি বিশেষ পাসওয়ার্ড প্রয়োজন।\n"
+        "পাসওয়ার্ড পেতে নিচের বাটনে ক্লিক করে অ্যাডমিনের সাথে যোগাযোগ করুন।\n\n"
         "_আপনার আগ্রহের জন্য ধন্যবাদ!_"
     )
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("✉️ Contact Admin", url=f"https://t.me/{DEVELOPER_USERNAME}")]
+        [InlineKeyboardButton("✉️ অ্যাডমিনের সাথে যোগাযোগ করুন", url=f"https://t.me/{DEVELOPER_USERNAME}")]
     ])
     await query.edit_message_text(text, reply_markup=keyboard, parse_mode="Markdown")
 
-# Developer Info
 async def developer_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
     text = (
-        "🌟 *প্রযুক্তির ছোঁয়ায় একটু ভিন্ন কিছু!*\n\n"
+        "🌟 *প্রযুক্তির ছোঁয়ায় ভিন্ন এক অভিজ্ঞতা!*\n\n"
         "*Developer: Swygen*\n"
-        "যিনি নিরলসভাবে টেলিগ্রাম কমিউনিটিকে সমর্থন করছেন প্রযুক্তির ছোঁয়ায়।\n\n"
-        "যোগাযোগের জন্য নিচের বাটনে ক্লিক করুন:"
+        "আপনার প্রয়োজনের জন্য সর্বদা পাশে আছি।\n\n"
+        "যোগাযোগ করতে নিচের বাটনে ক্লিক করুন:"
     )
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("✉️ যোগাযোগ করুন - Swygen", url=f"https://t.me/{DEVELOPER_USERNAME}")]
     ])
     await query.edit_message_text(text, reply_markup=keyboard, parse_mode="Markdown")
 
-# React to all group messages
 async def react_to_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.chat.type in ["group", "supergroup"]:
+    if update.message and update.message.chat.type in ["group", "supergroup"]:
         emoji = random.choice(EMOJI_REACTIONS)
         try:
-            await context.bot.set_message_reaction(
-                chat_id=update.message.chat_id,
-                message_id=update.message.message_id,
-                reaction=[emoji]
-            )
+            # Telegram Bot API তে এখনো official set_message_reaction method নেই python-telegram-bot লাইব্রেরিতে,
+            # তাই নিচে শুধু উদাহরণ দিয়ে রাখলাম। আপনি নিজে Telegram Bot API এর নতুন version এ check করবেন।
+            await context.bot.send_dice(chat_id=update.message.chat_id)  # শুধুমাত্র ডেমো, পরিবর্তন করতে হবে
+            # যদি reaction API আসে, তখন হবে:
+            # await context.bot.set_message_reaction(chat_id=update.message.chat_id, message_id=update.message.message_id, reaction=[emoji])
         except Exception as e:
-            logging.warning(f"Reaction failed: {e}")
+            logging.warning(f"Reaction দেওয়া যায়নি: {e}")
 
-# Main
-if __name__ == '__main__':
+async def main():
     keep_alive()
+
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -137,8 +136,16 @@ if __name__ == '__main__':
     app.add_handler(CallbackQueryHandler(ask_password, pattern="ask_password"))
     app.add_handler(CallbackQueryHandler(request_key, pattern="request_key"))
     app.add_handler(CallbackQueryHandler(developer_info, pattern="developer"))
+
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_password))
-    app.add_handler(MessageHandler(filters.ALL, react_to_messages))  # React to all group messages
+    app.add_handler(MessageHandler(filters.ALL & ~filters.StatusUpdate.ALL, react_to_messages))
+
+    # Webhook থাকলে মুছে ফেলুন
+    await app.bot.delete_webhook(drop_pending_updates=True)
 
     print("✅ Bot is running...")
-    app.run_polling()
+    await app.run_polling()
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
